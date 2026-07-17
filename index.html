@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paddle Trainer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="layout">
+      <section class="workbench" aria-label="Morse trainer">
+        <header class="topbar">
+          <div>
+            <h1>Paddle Trainer</h1>
+            <p>Arduino Micro: D2 = dit ([), D3 = dah (])</p>
+          </div>
+          <button id="focusButton" type="button">Focus input</button>
+        </header>
+
+        <div class="status-grid">
+          <div class="metric">
+            <span>Mode</span>
+            <strong id="modeLabel">Single</strong>
+          </div>
+          <div class="metric">
+            <span>WPM</span>
+            <strong id="wpmLabel">18</strong>
+          </div>
+          <div class="metric">
+            <span>Input</span>
+            <strong id="inputLabel">-</strong>
+          </div>
+          <div class="metric">
+            <span>Code</span>
+            <strong id="codeLabel">-</strong>
+          </div>
+        </div>
+
+        <section id="targetPanel" class="target-panel" tabindex="0">
+          <div class="target-meta">
+            <span id="resultLabel">Ready</span>
+            <span id="keyStateLabel">Dit/Dah idle</span>
+          </div>
+          <div id="targetText" class="target-text" aria-live="polite"></div>
+        </section>
+
+        <section class="settings-grid" aria-label="Trainer settings">
+          <div class="control-group">
+            <label for="modeSelect">Exercise</label>
+            <select id="modeSelect">
+              <option value="single">Single symbol</option>
+              <option value="word">Word</option>
+              <option value="sentence">Short sentence</option>
+              <option value="free">Free input</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="wpmInput">WPM</label>
+            <input id="wpmInput" type="number" min="5" max="45" value="18" />
+          </div>
+
+          <div class="control-group">
+            <label for="toneInput">Tone Hz</label>
+            <input id="toneInput" type="number" min="300" max="1200" value="700" />
+          </div>
+
+          <div class="control-group">
+            <label for="wordLengthInput">Word length</label>
+            <input id="wordLengthInput" type="number" min="1" max="12" value="5" />
+          </div>
+
+          <div class="control-group">
+            <label for="wordCountInput">Sentence words</label>
+            <input id="wordCountInput" type="number" min="2" max="8" value="4" />
+          </div>
+
+          <div class="control-group">
+            <label for="iambicSelect">Keyer</label>
+            <select id="iambicSelect">
+              <option value="b">Iambic B</option>
+              <option value="a">Iambic A</option>
+            </select>
+          </div>
+
+          <label class="control-group check-control" for="adaptiveCoachInput">
+            <span>Coach</span>
+            <input id="adaptiveCoachInput" type="checkbox" checked />
+            <strong>Adaptive targets</strong>
+          </label>
+        </section>
+
+        <section class="symbol-panel" aria-label="Character selection">
+          <div class="symbol-header">
+            <h2>Symbols</h2>
+            <div class="actions">
+              <button id="kochButton" type="button">Koch start</button>
+              <button id="lettersButton" type="button">A-Z</button>
+              <button id="numbersButton" type="button">0-9</button>
+              <button id="newTargetButton" type="button">New target</button>
+            </div>
+          </div>
+          <div id="symbolGrid" class="symbol-grid"></div>
+        </section>
+
+        <section class="log-panel" aria-label="Input log">
+          <div class="log-header">
+            <h2>Input log</h2>
+            <button id="clearLogButton" type="button">Clear log</button>
+          </div>
+          <div id="logList" class="log-list">
+            <span id="logEmpty" class="log-empty">No input yet</span>
+          </div>
+        </section>
+      </section>
+      <aside class="right-rail">
+        <section class="coach-panel" aria-label="Training coach">
+          <div class="coach-header">
+            <h2>Coach</h2>
+            <span id="coachState" class="coach-state">Watching</span>
+          </div>
+          <div id="coachAdvice" class="coach-advice"></div>
+          <div id="coachStats" class="coach-stats"></div>
+          <div>
+            <h3>Focus symbols</h3>
+            <div id="coachFocus" class="coach-focus"></div>
+          </div>
+          <button id="applyCoachButton" type="button">Use focus set</button>
+        </section>
+
+        <section class="reference-panel" aria-label="Morse code reference">
+          <h2>Morse reference</h2>
+          <div id="referenceGrid" class="reference-grid"></div>
+        </section>
+      </aside>
+      </div>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -78,6 +78,10 @@ function randomFrom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 function randomWeighted(items, weightFor) {
   const weights = items.map((item) => Math.max(1, weightFor(item)));
   const total = weights.reduce((sum, weight) => sum + weight, 0);
@@ -169,10 +173,11 @@ function newTarget() {
     const words = [];
     const sentenceCounts = new Map();
     for (let i = 0; i < wordCount; i++) {
-      words.push(randomWord(wordLength, pickSymbol, {
+      const currentWordLength = randomInt(1, wordLength);
+      words.push(randomWord(currentWordLength, pickSymbol, {
         chars,
         globalCounts: sentenceCounts,
-        perWordLimit: 2,
+        perWordLimit: 1,
         totalLimit: 4
       }));
     }

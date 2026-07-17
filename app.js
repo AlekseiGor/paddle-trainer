@@ -54,7 +54,6 @@ const els = {
   coachAdvice: document.getElementById("coachAdvice"),
   coachStats: document.getElementById("coachStats"),
   coachFocus: document.getElementById("coachFocus"),
-  adaptiveCoachInput: document.getElementById("adaptiveCoachInput"),
   referenceGrid: document.getElementById("referenceGrid"),
   modeSelect: document.getElementById("modeSelect"),
   wpmInput: document.getElementById("wpmInput"),
@@ -82,34 +81,8 @@ function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function randomWeighted(items, weightFor) {
-  const weights = items.map((item) => Math.max(1, weightFor(item)));
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
-  let pick = Math.random() * total;
-  for (let i = 0; i < items.length; i++) {
-    pick -= weights[i];
-    if (pick <= 0) {
-      return items[i];
-    }
-  }
-  return items[items.length - 1];
-}
-
 function makeSymbolPicker(chars) {
-  if (!els.adaptiveCoachInput.checked || state.attemptLog.length < 8) {
-    return (allowed = chars) => randomFrom(allowed.length ? allowed : chars);
-  }
-
-  const analysis = analyzeSession();
-  const bySymbol = analysis.bySymbol;
-  return (allowed = chars) => randomWeighted(allowed.length ? allowed : chars, (ch) => {
-    const stat = bySymbol.get(ch);
-    if (!stat) {
-      return 2;
-    }
-    const errorRate = stat.attempts ? stat.errors / stat.attempts : 0;
-    return 1 + stat.errors * 4 + Math.round(errorRate * 8);
-  });
+  return (allowed = chars) => randomFrom(allowed.length ? allowed : chars);
 }
 
 function countFor(map, ch) {
@@ -261,6 +234,7 @@ function handleDecodedChar(ch, code) {
   if (!correct) {
     setResult(`Expected ${expected}, got ${ch}`, "error");
     if (state.mode === "sentence") {
+      state.decoded = state.decoded.slice(0, -1);
       render();
       return;
     }
@@ -349,7 +323,7 @@ function renderCoach() {
   const recentPct = Math.round(analysis.recentAccuracy * 100);
   const focusSymbols = analysis.focus.map((stat) => stat.symbol);
 
-  els.coachState.textContent = els.adaptiveCoachInput.checked ? "Adaptive" : "Watching";
+  els.coachState.textContent = "Tracking";
   els.coachAdvice.textContent = coachAdviceText(analysis);
 
   els.coachStats.innerHTML = "";
@@ -389,7 +363,7 @@ function renderCoach() {
 
 function coachAdviceText(analysis) {
   if (analysis.total < 10) {
-    return "Send 10-20 symbols. I will start favoring symbols where errors appear.";
+    return "Send 10-20 symbols to build enough statistics.";
   }
 
   const focusSymbols = analysis.focus.map((stat) => stat.symbol);
@@ -398,7 +372,7 @@ function coachAdviceText(analysis) {
   }
 
   if (focusSymbols.length) {
-    return `Current focus: ${focusSymbols.join(", ")}. Adaptive mode will show them more often.`;
+    return `Weak symbols: ${focusSymbols.join(", ")}. Generation still uses the full selected set.`;
   }
 
   if (analysis.total >= 30 && analysis.accuracy >= 0.9) {
@@ -678,9 +652,6 @@ function applySettings() {
   if (settings.iambic) {
     els.iambicSelect.value = settings.iambic;
   }
-  if (typeof settings.adaptiveCoach === "boolean") {
-    els.adaptiveCoachInput.checked = settings.adaptiveCoach;
-  }
 }
 
 function saveSettings() {
@@ -691,7 +662,6 @@ function saveSettings() {
     wordLength: els.wordLengthInput.value,
     wordCount: els.wordCountInput.value,
     iambic: els.iambicSelect.value,
-    adaptiveCoach: els.adaptiveCoachInput.checked,
     symbols: [...els.symbolGrid.querySelectorAll("input:checked")].map((input) => input.value)
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -751,24 +721,12 @@ function bindUi() {
     els.wpmInput,
     els.wordLengthInput,
     els.wordCountInput,
-    els.iambicSelect,
-    els.adaptiveCoachInput
+    els.iambicSelect
   ]) {
     input.addEventListener("change", newTarget);
   }
 
   els.toneInput.addEventListener("change", render);
-  document.getElementById("applyCoachButton").addEventListener("click", () => {
-    const focus = analyzeSession().focus.map((stat) => stat.symbol);
-    if (!focus.length) {
-      return;
-    }
-    for (const input of els.symbolGrid.querySelectorAll("input")) {
-      input.checked = focus.includes(input.value);
-      input.parentElement.classList.toggle("selected", input.checked);
-    }
-    newTarget();
-  });
 }
 
 applySettings();

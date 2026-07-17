@@ -40,7 +40,7 @@ All paddle input is sounded by the trainer through Web Audio.
 
 The right side of the page contains a full Morse reference table with letters, numbers, and common punctuation.
 
-The always-on coach watches the session log, reports accuracy, highlights weak symbols, and can make new targets favor symbols with more errors when `Adaptive targets` is enabled.
+The session stats panel watches the log, reports accuracy, and highlights weak symbols. Target generation always uses the full selected symbol set.
 
 The bottom input log shows every decoded key input:
 

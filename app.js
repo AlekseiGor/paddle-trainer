@@ -260,6 +260,10 @@ function handleDecodedChar(ch, code) {
 
   if (!correct) {
     setResult(`Expected ${expected}, got ${ch}`, "error");
+    if (state.mode === "sentence") {
+      render();
+      return;
+    }
     if (state.mode === "single") {
       state.cursor = 0;
       state.decoded = "";

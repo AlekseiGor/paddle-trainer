@@ -93,12 +93,12 @@ function randomWeighted(items, weightFor) {
 
 function makeSymbolPicker(chars) {
   if (!els.adaptiveCoachInput.checked || state.attemptLog.length < 8) {
-    return () => randomFrom(chars);
+    return (allowed = chars) => randomFrom(allowed.length ? allowed : chars);
   }
 
   const analysis = analyzeSession();
   const bySymbol = analysis.bySymbol;
-  return () => randomWeighted(chars, (ch) => {
+  return (allowed = chars) => randomWeighted(allowed.length ? allowed : chars, (ch) => {
     const stat = bySymbol.get(ch);
     if (!stat) {
       return 2;
@@ -108,10 +108,40 @@ function makeSymbolPicker(chars) {
   });
 }
 
-function randomWord(length, pickSymbol) {
+function countFor(map, ch) {
+  return map.get(ch) || 0;
+}
+
+function incrementCount(map, ch) {
+  map.set(ch, countFor(map, ch) + 1);
+}
+
+function randomWord(length, pickSymbol, options = {}) {
+  const chars = options.chars || selectedSymbols();
+  const wordCounts = new Map();
+  const globalCounts = options.globalCounts || null;
+  const perWordLimit = options.perWordLimit || Infinity;
+  const totalLimit = options.totalLimit || Infinity;
   let word = "";
   for (let i = 0; i < length; i++) {
-    word += pickSymbol();
+    let allowed = chars.filter((ch) => (
+      countFor(wordCounts, ch) < perWordLimit
+      && (!globalCounts || countFor(globalCounts, ch) < totalLimit)
+    ));
+
+    if (!allowed.length) {
+      allowed = chars.filter((ch) => countFor(wordCounts, ch) < perWordLimit);
+    }
+    if (!allowed.length) {
+      allowed = chars;
+    }
+
+    const ch = pickSymbol(allowed);
+    word += ch;
+    incrementCount(wordCounts, ch);
+    if (globalCounts) {
+      incrementCount(globalCounts, ch);
+    }
   }
   return word;
 }
@@ -131,11 +161,20 @@ function newTarget() {
   if (state.mode === "single") {
     state.target = pickSymbol();
   } else if (state.mode === "word") {
-    state.target = randomWord(wordLength, pickSymbol);
+    state.target = randomWord(wordLength, pickSymbol, {
+      chars,
+      perWordLimit: 2
+    });
   } else if (state.mode === "sentence") {
     const words = [];
+    const sentenceCounts = new Map();
     for (let i = 0; i < wordCount; i++) {
-      words.push(randomWord(wordLength, pickSymbol));
+      words.push(randomWord(wordLength, pickSymbol, {
+        chars,
+        globalCounts: sentenceCounts,
+        perWordLimit: 2,
+        totalLimit: 4
+      }));
     }
     state.target = words.join(" ");
   } else {

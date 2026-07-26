@@ -197,7 +197,7 @@ function render() {
       if (i === state.cursor) {
         span.classList.add("current");
       }
-      span.textContent = i < state.cursor ? "OK" : "--";
+      span.textContent = i < state.cursor ? state.decoded[i] : "--";
       els.targetText.append(span);
     }
     renderLog();

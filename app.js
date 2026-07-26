@@ -57,7 +57,7 @@ const els = {
   coachFocus: document.getElementById("coachFocus"),
   referenceGrid: document.getElementById("referenceGrid"),
   modeSelect: document.getElementById("modeSelect"),
-  playTargetButton: document.getElementById("playTargetButton"),
+  playTargetButtons: [...document.querySelectorAll("[data-play-target]")],
   wpmInput: document.getElementById("wpmInput"),
   toneInput: document.getElementById("toneInput"),
   wordLengthInput: document.getElementById("wordLengthInput"),
@@ -174,7 +174,9 @@ function render() {
   els.inputLabel.textContent = state.decoded || "-";
   els.codeLabel.textContent = state.currentCode || "-";
   els.keyStateLabel.textContent = `${state.ditDown ? "Dit" : "-"} / ${state.dahDown ? "Dah" : "-"}`;
-  els.playTargetButton.disabled = state.mode !== "listen" || state.playbackRunning;
+  for (const button of els.playTargetButtons) {
+    button.disabled = state.playbackRunning;
+  }
 
   els.targetText.innerHTML = "";
   if (state.mode === "free") {
@@ -507,7 +509,15 @@ async function playMorseCode(code) {
 }
 
 async function playTarget() {
-  if (state.playbackRunning || state.mode !== "listen" || !state.targetFlat) {
+  if (state.playbackRunning) {
+    return;
+  }
+  if (state.mode !== "listen") {
+    setResult("Select Listen repeat", "error");
+    render();
+    return;
+  }
+  if (!state.targetFlat) {
     return;
   }
 
@@ -786,7 +796,9 @@ function bindUi() {
   });
 
   document.getElementById("newTargetButton").addEventListener("click", newTarget);
-  document.getElementById("playTargetButton").addEventListener("click", playTarget);
+  for (const button of els.playTargetButtons) {
+    button.addEventListener("click", playTarget);
+  }
   document.getElementById("clearLogButton").addEventListener("click", () => {
     state.attemptLog = [];
     saveSessionLog();

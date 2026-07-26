@@ -391,29 +391,55 @@ h1 {
 }
 
 .reference-panel,
-.coach-panel {
+.coach-panel,
+.sync-panel {
   border: 1px solid var(--line);
   background: var(--panel);
   padding: 12px;
 }
 
 .reference-panel h2,
-.coach-panel h2 {
+.coach-panel h2,
+.sync-panel h2 {
   margin-bottom: 12px;
 }
 
-.coach-header {
+.coach-header,
+.sync-header {
   display: flex;
   justify-content: space-between;
   gap: 10px;
 }
 
-.coach-state {
+.coach-state,
+.sync-status {
   align-self: start;
   color: var(--green);
   border: 1px solid rgba(79, 210, 139, 0.55);
   padding: 3px 7px;
   font-size: 12px;
+}
+
+.sync-status.error {
+  color: var(--red);
+  border-color: rgba(255, 92, 92, 0.75);
+}
+
+.sync-status.pending {
+  color: var(--yellow);
+  border-color: rgba(242, 202, 82, 0.75);
+}
+
+.sync-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sync-controls input {
+  grid-column: 1 / -1;
+  min-height: 36px;
+  padding: 0 10px;
 }
 
 .coach-advice {

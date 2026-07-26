@@ -39,6 +39,15 @@ const state = {
 
 const STORAGE_KEY = "paddleTrainerSettings.v1";
 const LOG_STORAGE_KEY = "paddleTrainerSessionLog.v1";
+const SYNC_KEY_STORAGE_KEY = "paddleTrainerSyncKey.v1";
+const SYNC_CONFIG = window.PADDLE_SYNC_CONFIG || {};
+
+const syncState = {
+  client: null,
+  profileHash: "",
+  saveTimer: 0,
+  loading: false
+};
 
 const els = {
   targetPanel: document.getElementById("targetPanel"),
@@ -51,6 +60,8 @@ const els = {
   keyStateLabel: document.getElementById("keyStateLabel"),
   logList: document.getElementById("logList"),
   logEmpty: document.getElementById("logEmpty"),
+  syncStatus: document.getElementById("syncStatus"),
+  syncKeyInput: document.getElementById("syncKeyInput"),
   coachState: document.getElementById("coachState"),
   coachAdvice: document.getElementById("coachAdvice"),
   coachStats: document.getElementById("coachStats"),
@@ -63,7 +74,10 @@ const els = {
   wordLengthInput: document.getElementById("wordLengthInput"),
   wordCountInput: document.getElementById("wordCountInput"),
   iambicSelect: document.getElementById("iambicSelect"),
-  symbolGrid: document.getElementById("symbolGrid")
+  symbolGrid: document.getElementById("symbolGrid"),
+  syncNewKeyButton: document.getElementById("syncNewKeyButton"),
+  syncConnectButton: document.getElementById("syncConnectButton"),
+  syncSaveButton: document.getElementById("syncSaveButton")
 };
 
 function unitMs() {
@@ -706,12 +720,30 @@ function loadSessionLog() {
   }
 }
 
-function saveSessionLog() {
-  sessionStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(state.attemptLog));
+function currentSettings() {
+  return {
+    mode: els.modeSelect.value,
+    wpm: els.wpmInput.value,
+    tone: els.toneInput.value,
+    wordLength: els.wordLengthInput.value,
+    wordCount: els.wordCountInput.value,
+    iambic: els.iambicSelect.value,
+    symbols: [...els.symbolGrid.querySelectorAll("input:checked")].map((input) => input.value)
+  };
 }
 
-function applySettings() {
-  const settings = loadSettings();
+function setSelectedSymbols(symbols) {
+  if (!Array.isArray(symbols)) {
+    return;
+  }
+
+  for (const input of els.symbolGrid.querySelectorAll("input")) {
+    input.checked = symbols.includes(input.value);
+    input.parentElement.classList.toggle("selected", input.checked);
+  }
+}
+
+function applySettingsObject(settings) {
   if (!settings) {
     return;
   }
@@ -734,19 +766,151 @@ function applySettings() {
   if (settings.iambic) {
     els.iambicSelect.value = settings.iambic;
   }
+  setSelectedSymbols(settings.symbols);
+}
+
+function applySettings() {
+  applySettingsObject(loadSettings());
 }
 
 function saveSettings() {
-  const settings = {
-    mode: els.modeSelect.value,
-    wpm: els.wpmInput.value,
-    tone: els.toneInput.value,
-    wordLength: els.wordLengthInput.value,
-    wordCount: els.wordCountInput.value,
-    iambic: els.iambicSelect.value,
-    symbols: [...els.symbolGrid.querySelectorAll("input:checked")].map((input) => input.value)
-  };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(currentSettings()));
+  scheduleCloudSave();
+}
+
+function saveSessionLog() {
+  sessionStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(state.attemptLog));
+  scheduleCloudSave();
+}
+
+function syncConfigured() {
+  return Boolean(SYNC_CONFIG.supabaseUrl && SYNC_CONFIG.supabaseAnonKey && window.supabase);
+}
+
+function setSyncStatus(text, className = "") {
+  els.syncStatus.textContent = text;
+  els.syncStatus.classList.remove("error", "pending");
+  if (className) {
+    els.syncStatus.classList.add(className);
+  }
+}
+
+function getSyncClient() {
+  if (!syncConfigured()) {
+    return null;
+  }
+  if (!syncState.client) {
+    syncState.client = window.supabase.createClient(SYNC_CONFIG.supabaseUrl, SYNC_CONFIG.supabaseAnonKey);
+  }
+  return syncState.client;
+}
+
+async function sha256Hex(text) {
+  const bytes = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function generateSyncKey() {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+  return hex.match(/.{1,4}/g).join("-");
+}
+
+function applyCloudProfile(profile) {
+  syncState.loading = true;
+  applySettingsObject(profile.settings || {});
+  state.attemptLog = Array.isArray(profile.attempt_log) ? profile.attempt_log : [];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(currentSettings()));
+  sessionStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(state.attemptLog));
+  newTarget();
+  syncState.loading = false;
+  render();
+}
+
+async function connectCloudSync() {
+  const client = getSyncClient();
+  if (!client) {
+    setSyncStatus("Not configured", "error");
+    return;
+  }
+
+  const key = els.syncKeyInput.value.trim();
+  if (!key) {
+    setSyncStatus("Enter key", "error");
+    return;
+  }
+
+  try {
+    setSyncStatus("Loading", "pending");
+    syncState.profileHash = await sha256Hex(key);
+    localStorage.setItem(SYNC_KEY_STORAGE_KEY, key);
+
+    const { data, error } = await client.rpc("paddle_pull_profile", {
+      p_profile_hash: syncState.profileHash
+    });
+    if (error) {
+      throw error;
+    }
+
+    const profile = Array.isArray(data) ? data[0] : data;
+    if (profile) {
+      applyCloudProfile(profile);
+      setSyncStatus("Synced");
+    } else {
+      await saveCloudProfile("Created");
+    }
+  } catch {
+    syncState.profileHash = "";
+    setSyncStatus("Sync error", "error");
+  }
+}
+
+async function saveCloudProfile(statusText = "Saved") {
+  const client = getSyncClient();
+  if (!client || !syncState.profileHash || syncState.loading) {
+    return;
+  }
+
+  try {
+    setSyncStatus("Saving", "pending");
+    const { error } = await client.rpc("paddle_save_profile", {
+      p_profile_hash: syncState.profileHash,
+      p_settings: currentSettings(),
+      p_attempt_log: state.attemptLog
+    });
+    if (error) {
+      throw error;
+    }
+    setSyncStatus(statusText);
+  } catch {
+    setSyncStatus("Sync error", "error");
+  }
+}
+
+function scheduleCloudSave() {
+  if (!syncState.profileHash || syncState.loading) {
+    return;
+  }
+  clearTimeout(syncState.saveTimer);
+  setSyncStatus("Unsaved", "pending");
+  syncState.saveTimer = setTimeout(() => {
+    saveCloudProfile();
+  }, 800);
+}
+
+function initCloudSync() {
+  const savedKey = localStorage.getItem(SYNC_KEY_STORAGE_KEY) || "";
+  els.syncKeyInput.value = savedKey;
+  if (!syncConfigured()) {
+    setSyncStatus("Local only", "error");
+    return;
+  }
+  setSyncStatus(savedKey ? "Ready" : "No key");
+  if (savedKey) {
+    setTimeout(connectCloudSync, 0);
+  }
 }
 
 function setSymbolPreset(kind) {
@@ -807,6 +971,12 @@ function bindUi() {
   document.getElementById("kochButton").addEventListener("click", () => setSymbolPreset("koch"));
   document.getElementById("lettersButton").addEventListener("click", () => setSymbolPreset("letters"));
   document.getElementById("numbersButton").addEventListener("click", () => setSymbolPreset("numbers"));
+  els.syncNewKeyButton.addEventListener("click", () => {
+    els.syncKeyInput.value = generateSyncKey();
+    connectCloudSync();
+  });
+  els.syncConnectButton.addEventListener("click", connectCloudSync);
+  els.syncSaveButton.addEventListener("click", () => saveCloudProfile());
 
   for (const input of [
     els.modeSelect,
@@ -825,5 +995,6 @@ applySettings();
 buildSymbolGrid();
 buildReferenceGrid();
 state.attemptLog = loadSessionLog();
+initCloudSync();
 bindUi();
 newTarget();

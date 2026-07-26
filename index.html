@@ -115,6 +115,19 @@
         </section>
       </section>
       <aside class="right-rail">
+        <section class="sync-panel" aria-label="Cloud sync">
+          <div class="sync-header">
+            <h2>Cloud sync</h2>
+            <span id="syncStatus" class="sync-status">Local only</span>
+          </div>
+          <div class="sync-controls">
+            <input id="syncKeyInput" type="text" autocomplete="off" spellcheck="false" placeholder="Sync key" />
+            <button id="syncNewKeyButton" type="button">New key</button>
+            <button id="syncConnectButton" type="button">Load</button>
+            <button id="syncSaveButton" type="button">Save</button>
+          </div>
+        </section>
+
         <section class="coach-panel" aria-label="Training coach">
           <div class="coach-header">
             <h2>Coach</h2>
@@ -136,6 +149,8 @@
       </div>
     </main>
 
+    <script src="./sync-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./app.js"></script>
   </body>
 </html>

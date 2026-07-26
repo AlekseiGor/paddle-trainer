@@ -40,7 +40,10 @@
         <section id="targetPanel" class="target-panel" tabindex="0">
           <div class="target-meta">
             <span id="resultLabel">Ready</span>
-            <span id="keyStateLabel">Dit/Dah idle</span>
+            <div class="target-controls">
+              <span id="keyStateLabel">Dit/Dah idle</span>
+              <button id="playTargetButton" type="button">Play</button>
+            </div>
           </div>
           <div id="targetText" class="target-text" aria-live="polite"></div>
         </section>
@@ -95,7 +98,6 @@
               <button id="lettersButton" type="button">A-Z</button>
               <button id="numbersButton" type="button">0-9</button>
               <button id="newTargetButton" type="button">New target</button>
-              <button id="playTargetButton" type="button">Play hidden</button>
             </div>
           </div>
           <div id="symbolGrid" class="symbol-grid"></div>

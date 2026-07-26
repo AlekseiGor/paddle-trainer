@@ -47,7 +47,7 @@ The session stats panel watches the log, reports accuracy, and highlights weak s
 
 Cloud sync is optional. Without `sync-config.js` values, the trainer keeps using local browser storage.
 
-When sync is configured, the trainer stores these fields on the server under a user-provided sync key:
+When sync is configured, the trainer stores these fields on the server under the shared `syncKey` from `sync-config.js`:
 
 - selected symbols
 - trainer settings
@@ -60,9 +60,10 @@ To enable sync:
 2. Open the Supabase SQL editor.
 3. Run `supabase-schema.sql`.
 4. Copy the project URL and anon public key into `sync-config.js`.
-5. Deploy the updated files.
+5. Set one shared `syncKey` in `sync-config.js`.
+6. Deploy the updated files.
 
-Use the same sync key on another device and press `Load` to restore the same settings and statistics.
+Every device that opens the site uses the same shared server profile automatically.
 
 The bottom input log shows every decoded key input:
 

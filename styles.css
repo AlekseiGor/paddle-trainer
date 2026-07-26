@@ -432,14 +432,8 @@ h1 {
 
 .sync-controls {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 8px;
-}
-
-.sync-controls input {
-  grid-column: 1 / -1;
-  min-height: 36px;
-  padding: 0 10px;
 }
 
 .coach-advice {

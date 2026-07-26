@@ -39,7 +39,6 @@ const state = {
 
 const STORAGE_KEY = "paddleTrainerSettings.v1";
 const LOG_STORAGE_KEY = "paddleTrainerSessionLog.v1";
-const SYNC_KEY_STORAGE_KEY = "paddleTrainerSyncKey.v1";
 const SYNC_CONFIG = window.PADDLE_SYNC_CONFIG || {};
 
 const syncState = {
@@ -61,7 +60,6 @@ const els = {
   logList: document.getElementById("logList"),
   logEmpty: document.getElementById("logEmpty"),
   syncStatus: document.getElementById("syncStatus"),
-  syncKeyInput: document.getElementById("syncKeyInput"),
   coachState: document.getElementById("coachState"),
   coachAdvice: document.getElementById("coachAdvice"),
   coachStats: document.getElementById("coachStats"),
@@ -75,8 +73,6 @@ const els = {
   wordCountInput: document.getElementById("wordCountInput"),
   iambicSelect: document.getElementById("iambicSelect"),
   symbolGrid: document.getElementById("symbolGrid"),
-  syncNewKeyButton: document.getElementById("syncNewKeyButton"),
-  syncConnectButton: document.getElementById("syncConnectButton"),
   syncSaveButton: document.getElementById("syncSaveButton")
 };
 
@@ -784,7 +780,7 @@ function saveSessionLog() {
 }
 
 function syncConfigured() {
-  return Boolean(SYNC_CONFIG.supabaseUrl && SYNC_CONFIG.supabaseAnonKey && window.supabase);
+  return Boolean(SYNC_CONFIG.supabaseUrl && SYNC_CONFIG.supabaseAnonKey && SYNC_CONFIG.syncKey && window.supabase);
 }
 
 function setSyncStatus(text, className = "") {
@@ -811,13 +807,6 @@ async function sha256Hex(text) {
   return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function generateSyncKey() {
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
-  return hex.match(/.{1,4}/g).join("-");
-}
-
 function applyCloudProfile(profile) {
   syncState.loading = true;
   applySettingsObject(profile.settings || {});
@@ -836,16 +825,15 @@ async function connectCloudSync() {
     return;
   }
 
-  const key = els.syncKeyInput.value.trim();
+  const key = String(SYNC_CONFIG.syncKey || "").trim();
   if (!key) {
-    setSyncStatus("Enter key", "error");
+    setSyncStatus("No sync key", "error");
     return;
   }
 
   try {
     setSyncStatus("Loading", "pending");
     syncState.profileHash = await sha256Hex(key);
-    localStorage.setItem(SYNC_KEY_STORAGE_KEY, key);
 
     const { data, error } = await client.rpc("paddle_pull_profile", {
       p_profile_hash: syncState.profileHash
@@ -901,16 +889,12 @@ function scheduleCloudSave() {
 }
 
 function initCloudSync() {
-  const savedKey = localStorage.getItem(SYNC_KEY_STORAGE_KEY) || "";
-  els.syncKeyInput.value = savedKey;
   if (!syncConfigured()) {
     setSyncStatus("Local only", "error");
     return;
   }
-  setSyncStatus(savedKey ? "Ready" : "No key");
-  if (savedKey) {
-    setTimeout(connectCloudSync, 0);
-  }
+  setSyncStatus("Ready");
+  setTimeout(connectCloudSync, 0);
 }
 
 function setSymbolPreset(kind) {
@@ -971,11 +955,6 @@ function bindUi() {
   document.getElementById("kochButton").addEventListener("click", () => setSymbolPreset("koch"));
   document.getElementById("lettersButton").addEventListener("click", () => setSymbolPreset("letters"));
   document.getElementById("numbersButton").addEventListener("click", () => setSymbolPreset("numbers"));
-  els.syncNewKeyButton.addEventListener("click", () => {
-    els.syncKeyInput.value = generateSyncKey();
-    connectCloudSync();
-  });
-  els.syncConnectButton.addEventListener("click", connectCloudSync);
   els.syncSaveButton.addEventListener("click", () => saveCloudProfile());
 
   for (const input of [

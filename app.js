@@ -442,20 +442,24 @@ function renderLog() {
   }
 }
 
-function startAudio() {
+async function startAudio() {
   if (!state.audio) {
-    state.audio = new AudioContext();
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      throw new Error("Web Audio is not supported");
+    }
+    state.audio = new AudioContextClass();
     state.gain = state.audio.createGain();
     state.gain.gain.value = 0.16;
     state.gain.connect(state.audio.destination);
   }
   if (state.audio.state === "suspended") {
-    state.audio.resume();
+    await state.audio.resume();
   }
 }
 
-function toneOn() {
-  startAudio();
+async function toneOn() {
+  await startAudio();
   if (state.oscillator) {
     return;
   }
@@ -477,21 +481,20 @@ function toneOff() {
 }
 
 async function playTone(duration) {
-  toneOn();
+  await toneOn();
   await sleep(duration);
   toneOff();
 }
 
-function sendElement(mark) {
+async function sendElement(mark) {
   clearTimeout(state.decodeTimer);
   const duration = mark === "." ? unitMs() : unitMs() * 3;
   state.currentCode += mark;
   render();
-  toneOn();
-  return sleep(duration).then(() => {
-    toneOff();
-    scheduleDecode();
-  });
+  await toneOn();
+  await sleep(duration);
+  toneOff();
+  scheduleDecode();
 }
 
 async function playMorseCode(code) {
@@ -512,20 +515,26 @@ async function playTarget() {
   setResult("Playing", "");
   render();
 
-  for (let i = 0; i < state.targetFlat.length; i++) {
-    const code = MORSE[state.targetFlat[i]];
-    if (!code) {
-      continue;
+  try {
+    await startAudio();
+    for (let i = 0; i < state.targetFlat.length; i++) {
+      const code = MORSE[state.targetFlat[i]];
+      if (!code) {
+        continue;
+      }
+      await playMorseCode(code);
+      if (i < state.targetFlat.length - 1) {
+        await sleep(unitMs() * 3);
+      }
     }
-    await playMorseCode(code);
-    if (i < state.targetFlat.length - 1) {
-      await sleep(unitMs() * 3);
-    }
+    setResult("Repeat with paddle", "");
+  } catch {
+    setResult("Audio unavailable", "error");
+  } finally {
+    toneOff();
+    state.playbackRunning = false;
+    render();
   }
-
-  state.playbackRunning = false;
-  setResult("Repeat with paddle", "");
-  render();
 }
 
 function scheduleDecode() {
@@ -767,8 +776,12 @@ function bindUi() {
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
 
-  document.getElementById("focusButton").addEventListener("click", () => {
-    startAudio();
+  document.getElementById("focusButton").addEventListener("click", async () => {
+    try {
+      await startAudio();
+    } catch {
+      setResult("Audio unavailable", "error");
+    }
     els.targetPanel.focus();
   });
 

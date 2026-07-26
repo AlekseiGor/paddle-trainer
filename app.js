@@ -29,6 +29,7 @@ const state = {
   ditMemory: false,
   dahMemory: false,
   keyerRunning: false,
+  playbackRunning: false,
   lastWasDit: false,
   decodeTimer: 0,
   audio: null,
@@ -56,6 +57,7 @@ const els = {
   coachFocus: document.getElementById("coachFocus"),
   referenceGrid: document.getElementById("referenceGrid"),
   modeSelect: document.getElementById("modeSelect"),
+  playTargetButton: document.getElementById("playTargetButton"),
   wpmInput: document.getElementById("wpmInput"),
   toneInput: document.getElementById("toneInput"),
   wordLengthInput: document.getElementById("wordLengthInput"),
@@ -155,12 +157,14 @@ function newTarget() {
       }));
     }
     state.target = words.join(" ");
+  } else if (state.mode === "listen") {
+    state.target = randomWord(wordLength, pickSymbol, { chars });
   } else {
     state.target = "";
   }
 
   state.targetFlat = state.target.replaceAll(" ", "");
-  setResult(state.mode === "free" ? "Free input" : "Ready", "");
+  setResult(state.mode === "free" ? "Free input" : state.mode === "listen" ? "Play hidden sequence" : "Ready", "");
   render();
 }
 
@@ -170,6 +174,7 @@ function render() {
   els.inputLabel.textContent = state.decoded || "-";
   els.codeLabel.textContent = state.currentCode || "-";
   els.keyStateLabel.textContent = `${state.ditDown ? "Dit" : "-"} / ${state.dahDown ? "Dah" : "-"}`;
+  els.playTargetButton.disabled = state.mode !== "listen" || state.playbackRunning;
 
   els.targetText.innerHTML = "";
   if (state.mode === "free") {
@@ -177,6 +182,24 @@ function render() {
     span.className = "free-output";
     span.textContent = state.decoded || "Send with paddle...";
     els.targetText.append(span);
+    renderLog();
+    renderCoach();
+    return;
+  }
+
+  if (state.mode === "listen") {
+    for (let i = 0; i < state.targetFlat.length; i++) {
+      const span = document.createElement("span");
+      span.className = "target-char hidden-char";
+      if (i < state.cursor) {
+        span.classList.add("correct");
+      }
+      if (i === state.cursor) {
+        span.classList.add("current");
+      }
+      span.textContent = i < state.cursor ? "OK" : "--";
+      els.targetText.append(span);
+    }
     renderLog();
     renderCoach();
     return;
@@ -229,11 +252,11 @@ function handleDecodedChar(ch, code) {
 
   const expected = state.targetFlat[state.cursor];
   const correct = ch === expected;
-  addLogEntry({ actual: ch, expected, code, correct });
+  addLogEntry({ actual: ch, expected, code, correct, hidden: state.mode === "listen" });
 
   if (!correct) {
-    setResult(`Expected ${expected}, got ${ch}`, "error");
-    if (state.mode === "sentence") {
+    setResult(state.mode === "listen" ? "Wrong, repeat current" : `Expected ${expected}, got ${ch}`, "error");
+    if (state.mode === "sentence" || state.mode === "listen") {
       state.decoded = state.decoded.slice(0, -1);
       render();
       return;
@@ -258,7 +281,7 @@ function handleDecodedChar(ch, code) {
   if (state.cursor >= state.targetFlat.length) {
     setResult("Correct", "success");
     render();
-    setTimeout(newTarget, state.mode === "single" ? 350 : 900);
+    setTimeout(newTarget, state.mode === "single" ? 350 : state.mode === "listen" ? 1200 : 900);
     return;
   }
 
@@ -407,7 +430,7 @@ function renderLog() {
 
     const expected = document.createElement("span");
     expected.className = "log-expected";
-    expected.textContent = entry.expected ? `/${entry.expected}` : "";
+    expected.textContent = entry.expected ? `/${entry.hidden ? "?" : entry.expected}` : "";
 
     const code = document.createElement("span");
     code.className = "log-code";
@@ -453,6 +476,12 @@ function toneOff() {
   state.oscillator = null;
 }
 
+async function playTone(duration) {
+  toneOn();
+  await sleep(duration);
+  toneOff();
+}
+
 function sendElement(mark) {
   clearTimeout(state.decodeTimer);
   const duration = mark === "." ? unitMs() : unitMs() * 3;
@@ -463,6 +492,40 @@ function sendElement(mark) {
     toneOff();
     scheduleDecode();
   });
+}
+
+async function playMorseCode(code) {
+  for (let i = 0; i < code.length; i++) {
+    await playTone(code[i] === "." ? unitMs() : unitMs() * 3);
+    if (i < code.length - 1) {
+      await sleep(unitMs());
+    }
+  }
+}
+
+async function playTarget() {
+  if (state.playbackRunning || state.mode !== "listen" || !state.targetFlat) {
+    return;
+  }
+
+  state.playbackRunning = true;
+  setResult("Playing", "");
+  render();
+
+  for (let i = 0; i < state.targetFlat.length; i++) {
+    const code = MORSE[state.targetFlat[i]];
+    if (!code) {
+      continue;
+    }
+    await playMorseCode(code);
+    if (i < state.targetFlat.length - 1) {
+      await sleep(unitMs() * 3);
+    }
+  }
+
+  state.playbackRunning = false;
+  setResult("Repeat with paddle", "");
+  render();
 }
 
 function scheduleDecode() {
@@ -686,6 +749,9 @@ function labelForMode(mode) {
   if (mode === "sentence") {
     return "Sentence";
   }
+  if (mode === "listen") {
+    return "Listen";
+  }
   return "Free";
 }
 
@@ -707,6 +773,7 @@ function bindUi() {
   });
 
   document.getElementById("newTargetButton").addEventListener("click", newTarget);
+  document.getElementById("playTargetButton").addEventListener("click", playTarget);
   document.getElementById("clearLogButton").addEventListener("click", () => {
     state.attemptLog = [];
     saveSessionLog();

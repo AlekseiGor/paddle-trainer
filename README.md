@@ -29,11 +29,12 @@ Open:
 
 `index.html`
 
-The trainer has four modes:
+The trainer has five modes:
 
 - Single symbol: the next symbol is shown only after the current one is sent correctly. Wrong input keeps the same symbol and marks it red.
 - Word: generates a word of the configured length and waits until the whole word is repeated correctly.
 - Short sentence: generates several words and waits until all generated symbols are repeated correctly.
+- Listen repeat: generates a hidden sequence from the selected symbols, plays it as Morse audio, and waits until the user repeats it correctly.
 - Free input: decodes and displays whatever you send with the paddle without checking against a target.
 
 All paddle input is sounded by the trainer through Web Audio.

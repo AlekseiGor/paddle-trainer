@@ -316,10 +316,14 @@ function analyzeSession() {
     }
     const expected = entry.expected || "?";
     if (!bySymbol.has(expected)) {
-      bySymbol.set(expected, { symbol: expected, attempts: 0, errors: 0, correct: 0, confusions: new Map() });
+      bySymbol.set(expected, { symbol: expected, attempts: 0, errors: 0, correct: 0, recent: [], confusions: new Map() });
     }
     const stat = bySymbol.get(expected);
     stat.attempts++;
+    stat.recent.push(Boolean(entry.correct));
+    if (stat.recent.length > 5) {
+      stat.recent.shift();
+    }
     if (entry.correct) {
       correct++;
       stat.correct++;
@@ -333,7 +337,7 @@ function analyzeSession() {
   const recent = state.attemptLog.slice(-20);
   const recentCorrect = recent.filter((entry) => entry.correct).length;
   const focus = [...bySymbol.values()]
-    .filter((stat) => stat.errors > 0)
+    .filter((stat) => stat.errors > 0 && !(stat.recent.length >= 5 && stat.recent.every(Boolean)))
     .sort((a, b) => {
       const rateA = a.errors / a.attempts;
       const rateB = b.errors / b.attempts;
@@ -419,7 +423,7 @@ function coachAdviceText(analysis) {
   }
 
   if (focusSymbols.length) {
-    return `Weak symbols are highlighted: ${focusSymbols.join(", ")}. Generation still uses the full selected set.`;
+    return `Weak symbols are highlighted: ${focusSymbols.join(", ")}. A symbol clears after 5 clean attempts.`;
   }
 
   if (analysis.total >= 30 && analysis.accuracy >= 0.9) {

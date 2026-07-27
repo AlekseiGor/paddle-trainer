@@ -357,6 +357,7 @@ function renderCoach() {
   const pct = Math.round(analysis.accuracy * 100);
   const recentPct = Math.round(analysis.recentAccuracy * 100);
   const focusSymbols = analysis.focus.map((stat) => stat.symbol);
+  renderCoachSymbolHighlights(analysis.focus);
 
   els.coachState.textContent = "Tracking";
   els.coachAdvice.textContent = coachAdviceText(analysis);
@@ -396,6 +397,17 @@ function renderCoach() {
   }
 }
 
+function renderCoachSymbolHighlights(focusStats) {
+  const bySymbol = new Map(focusStats.map((stat) => [stat.symbol, stat]));
+
+  for (const input of els.symbolGrid.querySelectorAll("input")) {
+    const stat = bySymbol.get(input.value);
+    const tile = input.parentElement;
+    tile.classList.toggle("coach-focus-symbol", Boolean(stat));
+    tile.title = stat ? `Coach focus: ${stat.errors}/${stat.attempts} errors` : "";
+  }
+}
+
 function coachAdviceText(analysis) {
   if (analysis.total < 10) {
     return "Send 10-20 symbols to build enough statistics.";
@@ -407,7 +419,7 @@ function coachAdviceText(analysis) {
   }
 
   if (focusSymbols.length) {
-    return `Weak symbols: ${focusSymbols.join(", ")}. Generation still uses the full selected set.`;
+    return `Weak symbols are highlighted: ${focusSymbols.join(", ")}. Generation still uses the full selected set.`;
   }
 
   if (analysis.total >= 30 && analysis.accuracy >= 0.9) {

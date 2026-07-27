@@ -41,7 +41,7 @@ All paddle input is sounded by the trainer through Web Audio.
 
 The right side of the page contains a full Morse reference table with letters, numbers, and common punctuation.
 
-The session stats panel watches the log, reports accuracy, and highlights weak symbols. Target generation always uses the full selected symbol set.
+The session stats panel watches the log, reports accuracy, highlights weak symbols in the Symbols grid, and does not change target generation. Target generation always uses the full selected symbol set.
 
 ## Cloud Sync
 

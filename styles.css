@@ -317,6 +317,15 @@ h1 {
   background: #17304f;
 }
 
+.symbol-tile.coach-focus-symbol {
+  border-color: var(--red);
+  box-shadow: inset 0 0 0 2px rgba(255, 92, 92, 0.28), 0 0 0 1px rgba(255, 92, 92, 0.18);
+}
+
+.symbol-tile.selected.coach-focus-symbol {
+  background: linear-gradient(135deg, #17304f 0 58%, rgba(255, 92, 92, 0.24) 58% 100%);
+}
+
 .log-panel {
   border: 1px solid var(--line);
   background: var(--panel);

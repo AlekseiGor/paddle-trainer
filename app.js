@@ -30,6 +30,10 @@ const state = {
   dahMemory: false,
   keyerRunning: false,
   playbackRunning: false,
+  playbackToken: 0,
+  listenGameRunning: false,
+  listenRevealAnswer: false,
+  listenAdvanceTimer: 0,
   lastWasDit: false,
   decodeTimer: 0,
   audio: null,
@@ -66,6 +70,7 @@ const els = {
   coachFocus: document.getElementById("coachFocus"),
   referenceGrid: document.getElementById("referenceGrid"),
   modeSelect: document.getElementById("modeSelect"),
+  listenGameButton: document.getElementById("listenGameButton"),
   playTargetButtons: [...document.querySelectorAll("[data-play-target]")],
   wpmInput: document.getElementById("wpmInput"),
   toneInput: document.getElementById("toneInput"),
@@ -143,9 +148,13 @@ function newTarget() {
   const wordCount = clamp(Number(els.wordCountInput.value || 4), 2, 8);
 
   state.mode = els.modeSelect.value;
+  if (state.mode !== "listen" && state.listenGameRunning) {
+    stopListenGame(false);
+  }
   state.cursor = 0;
   state.currentCode = "";
   state.decoded = "";
+  state.listenRevealAnswer = false;
 
   if (state.mode === "single") {
     state.target = pickSymbol();
@@ -184,6 +193,7 @@ function render() {
   els.inputLabel.textContent = state.decoded || "-";
   els.codeLabel.textContent = state.currentCode || "-";
   els.keyStateLabel.textContent = `${state.ditDown ? "Dit" : "-"} / ${state.dahDown ? "Dah" : "-"}`;
+  els.listenGameButton.textContent = state.listenGameRunning ? "Stop" : "Play";
   for (const button of els.playTargetButtons) {
     button.disabled = state.playbackRunning;
   }
@@ -209,7 +219,12 @@ function render() {
       if (i === state.cursor) {
         span.classList.add("current");
       }
-      span.textContent = i < state.cursor ? state.decoded[i] : "--";
+      if (state.listenRevealAnswer) {
+        span.classList.add("correct");
+        span.textContent = state.targetFlat[i];
+      } else {
+        span.textContent = i < state.cursor ? state.decoded[i] : "--";
+      }
       els.targetText.append(span);
     }
     renderLog();
@@ -291,6 +306,21 @@ function handleDecodedChar(ch, code) {
   state.cursor++;
 
   if (state.cursor >= state.targetFlat.length) {
+    if (state.mode === "listen" && state.listenGameRunning) {
+      state.listenRevealAnswer = true;
+      setResult("Correct", "success");
+      render();
+      clearTimeout(state.listenAdvanceTimer);
+      state.listenAdvanceTimer = setTimeout(() => {
+        if (!state.listenGameRunning || state.mode !== "listen") {
+          return;
+        }
+        newTarget();
+        playTarget();
+      }, 1200);
+      return;
+    }
+
     setResult("Correct", "success");
     render();
     setTimeout(newTarget, state.mode === "single" ? 350 : state.mode === "listen" ? 1200 : 900);
@@ -525,13 +555,20 @@ async function sendElement(mark) {
   scheduleDecode();
 }
 
-async function playMorseCode(code) {
+async function playMorseCode(code, token) {
   for (let i = 0; i < code.length; i++) {
+    if (token !== state.playbackToken) {
+      return false;
+    }
     await playTone(code[i] === "." ? unitMs() : unitMs() * 3);
+    if (token !== state.playbackToken) {
+      return false;
+    }
     if (i < code.length - 1) {
       await sleep(unitMs());
     }
   }
+  return true;
 }
 
 async function playTarget() {
@@ -548,28 +585,76 @@ async function playTarget() {
   }
 
   state.playbackRunning = true;
+  const token = ++state.playbackToken;
   setResult("Playing", "");
   render();
 
   try {
     await startAudio();
     for (let i = 0; i < state.targetFlat.length; i++) {
+      if (token !== state.playbackToken) {
+        return false;
+      }
       const code = MORSE[state.targetFlat[i]];
       if (!code) {
         continue;
       }
-      await playMorseCode(code);
+      const completed = await playMorseCode(code, token);
+      if (!completed) {
+        return false;
+      }
       if (i < state.targetFlat.length - 1) {
         await sleep(unitMs() * 3);
       }
     }
-    setResult("Repeat with paddle", "");
+    if (token === state.playbackToken) {
+      setResult("Repeat with paddle", "");
+    }
+    return true;
   } catch {
     setResult("Audio unavailable", "error");
+    return false;
   } finally {
     toneOff();
     state.playbackRunning = false;
     render();
+  }
+}
+
+async function startListenGame() {
+  if (state.mode !== "listen") {
+    setResult("Select Listen repeat", "error");
+    render();
+    return;
+  }
+  if (state.listenGameRunning) {
+    return;
+  }
+
+  state.listenGameRunning = true;
+  state.listenRevealAnswer = false;
+  clearTimeout(state.listenAdvanceTimer);
+  newTarget();
+  await playTarget();
+}
+
+function stopListenGame(updateResult = true) {
+  state.listenGameRunning = false;
+  state.listenRevealAnswer = false;
+  clearTimeout(state.listenAdvanceTimer);
+  state.playbackToken++;
+  toneOff();
+  if (updateResult) {
+    setResult("Game stopped", "");
+  }
+  render();
+}
+
+function toggleListenGame() {
+  if (state.listenGameRunning) {
+    stopListenGame();
+  } else {
+    startListenGame();
   }
 }
 
@@ -959,6 +1044,7 @@ function bindUi() {
     els.targetPanel.focus();
   });
 
+  els.listenGameButton.addEventListener("click", toggleListenGame);
   document.getElementById("newTargetButton").addEventListener("click", newTarget);
   for (const button of els.playTargetButtons) {
     button.addEventListener("click", playTarget);

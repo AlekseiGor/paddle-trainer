@@ -475,7 +475,7 @@ function renderLog() {
     return;
   }
 
-  for (const entry of state.attemptLog) {
+  for (const entry of state.attemptLog.slice(-50)) {
     const item = document.createElement("span");
     item.className = `log-entry ${entry.correct === null ? "neutral" : entry.correct ? "correct" : "error"}`;
 

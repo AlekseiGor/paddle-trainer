@@ -12,8 +12,8 @@
 #include <M5Unified.h>
 #include <BleKeyboard.h>
 
-const int DIT_PIN = 32;
-const int DAH_PIN = 33;
+const int DIT_PIN = 33;
+const int DAH_PIN = 32;
 
 const char DIT_KEY = '[';
 const char DAH_KEY = ']';
@@ -174,5 +174,5 @@ void drawFooter() {
   canvas.setTextFont(1);
   canvas.setTextColor(TFT_WHITE, TFT_NAVY);
   canvas.setCursor(4, 124);
-  canvas.print("Tip=G32  Ring=G33  Sleeve=GND  Focus input");
+  canvas.print("Tip=G33  Ring=G32  Sleeve=GND  Focus input");
 }

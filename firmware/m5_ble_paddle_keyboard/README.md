@@ -15,8 +15,8 @@ It sends:
 
 | Paddle jack | M5StickC Plus2 |
 | --- | --- |
-| tip / dit | `G32` |
-| ring / dah | `G33` |
+| tip / dit | `G33` |
+| ring / dah | `G32` |
 | sleeve / common | `GND` |
 
 Do not connect the paddle to `5V`.

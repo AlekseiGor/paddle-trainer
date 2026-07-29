@@ -23,6 +23,10 @@ It sends:
 - dit as held `[`
 - dah as held `]`
 
+For phone training over Bluetooth, use the M5StickC Plus2 firmware:
+
+`firmware/m5_ble_paddle_keyboard/m5_ble_paddle_keyboard.ino`
+
 ## Trainer
 
 Open:

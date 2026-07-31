@@ -37,6 +37,9 @@ bool stableDah = false;
 unsigned long rawDitChangedAt = 0;
 unsigned long rawDahChangedAt = 0;
 unsigned long lastScreenAt = 0;
+uint32_t sentDitCount = 0;
+uint32_t sentDahCount = 0;
+uint32_t testSendCount = 0;
 
 void setup() {
   pinMode(DIT_PIN, INPUT_PULLUP);
@@ -59,6 +62,7 @@ void loop() {
   M5.update();
   updateInputs();
   updateBleKeys();
+  updateButtons();
 
   if (millis() - lastScreenAt >= SCREEN_REFRESH_MS) {
     drawScreen(false);
@@ -101,6 +105,7 @@ void updateBleKeys() {
     ditDown = stableDit;
     if (ditDown) {
       bleKeyboard.press(DIT_KEY);
+      sentDitCount++;
     } else {
       bleKeyboard.release(DIT_KEY);
     }
@@ -110,9 +115,19 @@ void updateBleKeys() {
     dahDown = stableDah;
     if (dahDown) {
       bleKeyboard.press(DAH_KEY);
+      sentDahCount++;
     } else {
       bleKeyboard.release(DAH_KEY);
     }
+  }
+}
+
+void updateButtons() {
+  if (M5.BtnA.wasClicked() && bleKeyboard.isConnected()) {
+    bleKeyboard.write('a');
+    delay(20);
+    bleKeyboard.write('s');
+    testSendCount++;
   }
 }
 
@@ -127,7 +142,6 @@ void drawScreen(bool force) {
   canvas.fillScreen(TFT_BLACK);
   drawHeader(connected);
   drawBody(connected);
-  drawFooter();
 
   M5.Display.startWrite();
   canvas.pushSprite(0, 0);
@@ -166,13 +180,7 @@ void drawBody(bool connected) {
 
   canvas.setTextColor(TFT_WHITE, TFT_BLACK);
   canvas.setCursor(8, 104);
-  canvas.printf("Dit G%d:%s  Dah G%d:%s", DIT_PIN, stableDit ? "ON" : "--", DAH_PIN, stableDah ? "ON" : "--");
-}
-
-void drawFooter() {
-  canvas.fillRect(0, 119, 240, 16, TFT_NAVY);
-  canvas.setTextFont(1);
-  canvas.setTextColor(TFT_WHITE, TFT_NAVY);
-  canvas.setCursor(4, 124);
-  canvas.print("Tip=G33/a  Ring=G32/s  Sleeve=GND");
+  canvas.printf("D G%d:%s %lu  H G%d:%s %lu", DIT_PIN, stableDit ? "ON" : "--", sentDitCount, DAH_PIN, stableDah ? "ON" : "--", sentDahCount);
+  canvas.setCursor(8, 118);
+  canvas.printf("BtnA test as: %lu", testSendCount);
 }

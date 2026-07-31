@@ -32,6 +32,16 @@ The M5 BLE firmware sends:
 - dit as held `a`
 - dah as held `s`
 
+For standalone phone training without Bluetooth keyboard support, use the M5StickC Plus2 Wi-Fi firmware:
+
+`firmware/m5_wifi_paddle_trainer/m5_wifi_paddle_trainer.ino`
+
+It creates Wi-Fi network `CW-Paddle` with password `morse12345` and serves the trainer at:
+
+`http://192.168.4.1`
+
+The Wi-Fi firmware serves the same `index.html`, `app.js`, `styles.css`, and `sync-config.js` files used by GitHub Pages. It stores settings in `/settings.json` and attempt history in `/attempts.jsonl` on the stick filesystem.
+
 ## Trainer
 
 Open:

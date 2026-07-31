@@ -15,10 +15,6 @@ const MORSE = {
 const DECODE = Object.fromEntries(Object.entries(MORSE).map(([k, v]) => [v, k]));
 const SYMBOLS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
 const KOCH_START = "KMRSUAPTLOWI";
-const DIT_INPUT_KEYS = new Set(["[", "{"]);
-const DAH_INPUT_KEYS = new Set(["]", "}"]);
-const DIT_INPUT_CHARS = new Set(["[", "{", "a", "A", "\u0445", "\u0425", "\u0444", "\u0424"]);
-const DAH_INPUT_CHARS = new Set(["]", "}", "s", "S", "\u044a", "\u042A", "\u044b", "\u042B"]);
 
 const state = {
   mode: "single",
@@ -40,8 +36,6 @@ const state = {
   listenAdvanceTimer: 0,
   lastWasDit: false,
   decodeTimer: 0,
-  captureBeforeInputAt: 0,
-  lastRawInput: "",
   audio: null,
   oscillator: null,
   gain: null
@@ -59,9 +53,8 @@ const syncState = {
 };
 
 const deviceState = {
-  enabled: location.hostname === "192.168.4.1" || location.hostname.endsWith(".local") || new URLSearchParams(location.search).has("m5"),
+  enabled: location.hostname === "192.168.4.1" || new URLSearchParams(location.search).has("m5"),
   lastEventId: 0,
-  pollTimer: 0,
   settingsSaveTimer: 0,
   loading: false
 };
@@ -73,8 +66,6 @@ const els = {
   wpmLabel: document.getElementById("wpmLabel"),
   inputLabel: document.getElementById("inputLabel"),
   codeLabel: document.getElementById("codeLabel"),
-  rawInputLabel: document.getElementById("rawInputLabel"),
-  captureInput: document.getElementById("captureInput"),
   resultLabel: document.getElementById("resultLabel"),
   keyStateLabel: document.getElementById("keyStateLabel"),
   logList: document.getElementById("logList"),
@@ -208,7 +199,6 @@ function render() {
   els.wpmLabel.textContent = String(clamp(Number(els.wpmInput.value || 18), 5, 45));
   els.inputLabel.textContent = state.decoded || "-";
   els.codeLabel.textContent = state.currentCode || "-";
-  els.rawInputLabel.textContent = state.lastRawInput || "-";
   els.keyStateLabel.textContent = `${state.ditDown ? "Dit" : "-"} / ${state.dahDown ? "Dah" : "-"}`;
   els.listenGameButton.textContent = state.listenGameRunning ? "Stop" : "Play";
   for (const button of els.playTargetButtons) {
@@ -567,9 +557,14 @@ async function sendElement(mark) {
   const duration = mark === "." ? unitMs() : unitMs() * 3;
   state.currentCode += mark;
   render();
-  await toneOn();
-  await sleep(duration);
-  toneOff();
+  try {
+    await toneOn();
+    await sleep(duration);
+  } catch {
+    await sleep(duration);
+  } finally {
+    toneOff();
+  }
   scheduleDecode();
 }
 
@@ -738,12 +733,40 @@ async function runKeyer() {
   render();
 }
 
-function focusPaddleInput() {
-  els.captureInput.value = "";
-  els.captureInput.focus({ preventScroll: true });
+function onKeyDown(event) {
+  if (event.repeat) {
+    return;
+  }
+  if (event.key === "[") {
+    event.preventDefault();
+    state.ditDown = true;
+    state.ditMemory = true;
+    setResult("Sending", "");
+    runKeyer();
+    render();
+  } else if (event.key === "]") {
+    event.preventDefault();
+    state.dahDown = true;
+    state.dahMemory = true;
+    setResult("Sending", "");
+    runKeyer();
+    render();
+  }
 }
 
-function pressPaddleKey(mark) {
+function onKeyUp(event) {
+  if (event.key === "[") {
+    event.preventDefault();
+    state.ditDown = false;
+    render();
+  } else if (event.key === "]") {
+    event.preventDefault();
+    state.dahDown = false;
+    render();
+  }
+}
+
+function pressDevicePaddle(mark) {
   if (mark === ".") {
     state.ditDown = true;
     state.ditMemory = true;
@@ -756,102 +779,13 @@ function pressPaddleKey(mark) {
   render();
 }
 
-function releasePaddleKey(mark) {
+function releaseDevicePaddle(mark) {
   if (mark === ".") {
     state.ditDown = false;
   } else {
     state.dahDown = false;
   }
   render();
-}
-
-function tapPaddleKey(mark) {
-  pressPaddleKey(mark);
-  setTimeout(() => releasePaddleKey(mark), Math.max(30, Math.round(unitMs() * 0.7)));
-}
-
-function paddleMarkFromKeyboardEvent(event) {
-  const captureActive = document.activeElement === els.captureInput || els.targetPanel.contains(document.activeElement);
-  if (DIT_INPUT_KEYS.has(event.key) || event.code === "BracketLeft" || (captureActive && (event.key === "a" || event.key === "A" || event.code === "KeyA"))) {
-    return ".";
-  }
-  if (DAH_INPUT_KEYS.has(event.key) || event.code === "BracketRight" || (captureActive && (event.key === "s" || event.key === "S" || event.code === "KeyS"))) {
-    return "-";
-  }
-  return "";
-}
-
-function formatRawInput(source, value, code = "") {
-  const shownValue = value === " " ? "Space" : value || "-";
-  return code ? `${source}:${shownValue}/${code}` : `${source}:${shownValue}`;
-}
-
-function paddleMarkFromInputChar(ch) {
-  if (DIT_INPUT_CHARS.has(ch)) {
-    return ".";
-  }
-  if (DAH_INPUT_CHARS.has(ch)) {
-    return "-";
-  }
-  return "";
-}
-
-function onKeyDown(event) {
-  if (event.repeat) {
-    return;
-  }
-  state.lastRawInput = formatRawInput("down", event.key, event.code);
-  const mark = paddleMarkFromKeyboardEvent(event);
-  if (mark) {
-    event.preventDefault();
-    pressPaddleKey(mark);
-  } else {
-    render();
-  }
-}
-
-function onKeyUp(event) {
-  state.lastRawInput = formatRawInput("up", event.key, event.code);
-  const mark = paddleMarkFromKeyboardEvent(event);
-  if (mark) {
-    event.preventDefault();
-    releasePaddleKey(mark);
-  } else {
-    render();
-  }
-}
-
-function onCaptureBeforeInput(event) {
-  state.lastRawInput = formatRawInput("before", event.data || event.inputType || "-");
-  const mark = paddleMarkFromInputChar(event.data);
-  if (mark) {
-    event.preventDefault();
-    state.captureBeforeInputAt = performance.now();
-    tapPaddleKey(mark);
-  } else {
-    render();
-  }
-}
-
-function onCaptureInput() {
-  const value = els.captureInput.value;
-  els.captureInput.value = "";
-  state.lastRawInput = formatRawInput("input", value || "-");
-  if (value.length === 1 && paddleMarkFromInputChar(value) && performance.now() - state.captureBeforeInputAt < 80) {
-    render();
-    return;
-  }
-  let handled = false;
-  for (const ch of value) {
-    const mark = paddleMarkFromInputChar(ch);
-    if (mark) {
-      tapPaddleKey(mark);
-      handled = true;
-    }
-  }
-  if (!handled) {
-    render();
-  }
 }
 
 function buildSymbolGrid() {
@@ -1084,11 +1018,10 @@ function handleDeviceEvent(event) {
     deviceState.lastEventId = event.id;
   }
   const mark = event.mark === "-" ? "-" : ".";
-  state.lastRawInput = formatRawInput("m5", event.down ? "down" : "up", mark);
   if (event.down) {
-    pressPaddleKey(mark);
+    pressDevicePaddle(mark);
   } else {
-    releasePaddleKey(mark);
+    releaseDevicePaddle(mark);
   }
 }
 
@@ -1103,16 +1036,10 @@ async function pollDeviceEvents() {
         handleDeviceEvent(event);
       }
     }
-    if (typeof data?.dit === "boolean") {
-      state.ditDown = data.dit;
-    }
-    if (typeof data?.dah === "boolean") {
-      state.dahDown = data.dah;
-    }
   } catch {
     setSyncStatus("Stick offline", "error");
   } finally {
-    deviceState.pollTimer = setTimeout(pollDeviceEvents, 60);
+    setTimeout(pollDeviceEvents, 60);
   }
 }
 
@@ -1126,7 +1053,7 @@ function initDeviceBridge() {
 }
 
 function syncConfigured() {
-  return Boolean(SYNC_CONFIG.supabaseUrl && SYNC_CONFIG.supabaseAnonKey && SYNC_CONFIG.syncKey);
+  return Boolean(SYNC_CONFIG.supabaseUrl && SYNC_CONFIG.supabaseAnonKey && SYNC_CONFIG.syncKey && window.supabase);
 }
 
 function setSyncStatus(text, className = "") {
@@ -1138,7 +1065,7 @@ function setSyncStatus(text, className = "") {
 }
 
 function getSyncClient() {
-  if (!syncConfigured() || !window.supabase) {
+  if (!syncConfigured()) {
     return null;
   }
   if (!syncState.client) {
@@ -1234,33 +1161,13 @@ function scheduleCloudSave() {
   }, 800);
 }
 
-function loadExternalScript(src) {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.append(script);
-  });
-}
-
-async function initCloudSync() {
+function initCloudSync() {
   if (deviceState.enabled) {
     return;
   }
   if (!syncConfigured()) {
     setSyncStatus("Local only", "error");
     return;
-  }
-  if (!window.supabase) {
-    try {
-      setSyncStatus("Loading sync", "pending");
-      await loadExternalScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2");
-    } catch {
-      setSyncStatus("Sync unavailable", "error");
-      return;
-    }
   }
   setSyncStatus("Ready");
   setTimeout(connectCloudSync, 0);
@@ -1302,20 +1209,14 @@ function sleep(ms) {
 function bindUi() {
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
-  els.captureInput.addEventListener("beforeinput", onCaptureBeforeInput);
-  els.captureInput.addEventListener("input", onCaptureInput);
-  els.targetPanel.addEventListener("pointerdown", () => {
-    focusPaddleInput();
-  });
 
   document.getElementById("focusButton").addEventListener("click", async () => {
-    focusPaddleInput();
-    setResult("Input focused", "");
     try {
       await startAudio();
     } catch {
       setResult("Audio unavailable", "error");
     }
+    els.targetPanel.focus();
   });
 
   els.listenGameButton.addEventListener("click", toggleListenGame);
@@ -1352,6 +1253,6 @@ buildSymbolGrid();
 buildReferenceGrid();
 state.attemptLog = loadSessionLog();
 initCloudSync();
-initDeviceBridge();
 bindUi();
 newTarget();
+initDeviceBridge();

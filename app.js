@@ -17,8 +17,8 @@ const SYMBOLS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
 const KOCH_START = "KMRSUAPTLOWI";
 const DIT_INPUT_KEYS = new Set(["[", "{"]);
 const DAH_INPUT_KEYS = new Set(["]", "}"]);
-const DIT_INPUT_CHARS = new Set(["[", "{", "a", "A", "\u0445", "\u0425"]);
-const DAH_INPUT_CHARS = new Set(["]", "}", "s", "S", "\u044a", "\u042A"]);
+const DIT_INPUT_CHARS = new Set(["[", "{", "a", "A", "\u0445", "\u0425", "\u0444", "\u0424"]);
+const DAH_INPUT_CHARS = new Set(["]", "}", "s", "S", "\u044a", "\u042A", "\u044b", "\u042B"]);
 
 const state = {
   mode: "single",
@@ -41,6 +41,7 @@ const state = {
   lastWasDit: false,
   decodeTimer: 0,
   captureBeforeInputAt: 0,
+  lastRawInput: "",
   audio: null,
   oscillator: null,
   gain: null
@@ -64,6 +65,7 @@ const els = {
   wpmLabel: document.getElementById("wpmLabel"),
   inputLabel: document.getElementById("inputLabel"),
   codeLabel: document.getElementById("codeLabel"),
+  rawInputLabel: document.getElementById("rawInputLabel"),
   captureInput: document.getElementById("captureInput"),
   resultLabel: document.getElementById("resultLabel"),
   keyStateLabel: document.getElementById("keyStateLabel"),
@@ -198,6 +200,7 @@ function render() {
   els.wpmLabel.textContent = String(clamp(Number(els.wpmInput.value || 18), 5, 45));
   els.inputLabel.textContent = state.decoded || "-";
   els.codeLabel.textContent = state.currentCode || "-";
+  els.rawInputLabel.textContent = state.lastRawInput || "-";
   els.keyStateLabel.textContent = `${state.ditDown ? "Dit" : "-"} / ${state.dahDown ? "Dah" : "-"}`;
   els.listenGameButton.textContent = state.listenGameRunning ? "Stop" : "Play";
   for (const button of els.playTargetButtons) {
@@ -769,6 +772,11 @@ function paddleMarkFromKeyboardEvent(event) {
   return "";
 }
 
+function formatRawInput(source, value, code = "") {
+  const shownValue = value === " " ? "Space" : value || "-";
+  return code ? `${source}:${shownValue}/${code}` : `${source}:${shownValue}`;
+}
+
 function paddleMarkFromInputChar(ch) {
   if (DIT_INPUT_CHARS.has(ch)) {
     return ".";
@@ -783,41 +791,57 @@ function onKeyDown(event) {
   if (event.repeat) {
     return;
   }
+  state.lastRawInput = formatRawInput("down", event.key, event.code);
   const mark = paddleMarkFromKeyboardEvent(event);
   if (mark) {
     event.preventDefault();
     pressPaddleKey(mark);
+  } else {
+    render();
   }
 }
 
 function onKeyUp(event) {
+  state.lastRawInput = formatRawInput("up", event.key, event.code);
   const mark = paddleMarkFromKeyboardEvent(event);
   if (mark) {
     event.preventDefault();
     releasePaddleKey(mark);
+  } else {
+    render();
   }
 }
 
 function onCaptureBeforeInput(event) {
+  state.lastRawInput = formatRawInput("before", event.data || event.inputType || "-");
   const mark = paddleMarkFromInputChar(event.data);
   if (mark) {
     event.preventDefault();
     state.captureBeforeInputAt = performance.now();
     tapPaddleKey(mark);
+  } else {
+    render();
   }
 }
 
 function onCaptureInput() {
   const value = els.captureInput.value;
   els.captureInput.value = "";
+  state.lastRawInput = formatRawInput("input", value || "-");
   if (value.length === 1 && paddleMarkFromInputChar(value) && performance.now() - state.captureBeforeInputAt < 80) {
+    render();
     return;
   }
+  let handled = false;
   for (const ch of value) {
     const mark = paddleMarkFromInputChar(ch);
     if (mark) {
       tapPaddleKey(mark);
+      handled = true;
     }
+  }
+  if (!handled) {
+    render();
   }
 }
 

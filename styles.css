@@ -125,7 +125,7 @@ h1 {
 
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -146,6 +146,11 @@ h1 {
 .metric strong {
   font-size: 20px;
   line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+#rawInputLabel {
+  font-size: 14px;
 }
 
 .target-panel {

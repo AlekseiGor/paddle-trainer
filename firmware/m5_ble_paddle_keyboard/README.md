@@ -39,6 +39,8 @@ The M5StickC Plus2 screen shows:
 
 ## Build
 
+This sketch uses the local `BleKeyboard.h` and `BleKeyboard.cpp` files in the sketch folder. They are a scoped copy of `ESP32_BLE_Keyboard` with iPhone-oriented pairing changes: bonding without MITM and scan response enabled.
+
 ```powershell
 & "$env:LOCALAPPDATA\Programs\Arduino IDE\resources\app\lib\backend\resources\arduino-cli.exe" compile --fqbn esp32:esp32:m5stack_stickc_plus2 .\arduino\m5_ble_paddle_keyboard
 ```

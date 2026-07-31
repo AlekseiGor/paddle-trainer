@@ -10,8 +10,7 @@
 */
 
 #include <M5Unified.h>
-#include <BleKeyboard.h>
-#include <BLESecurity.h>
+#include "BleKeyboard.h"
 
 const int DIT_PIN = 33;
 const int DAH_PIN = 32;
@@ -59,10 +58,6 @@ void setup() {
   bleKeyboard.set_product_id(0x4001);
   bleKeyboard.set_version(0x0100);
   bleKeyboard.begin();
-  BLESecurity::setAuthenticationMode(ESP_LE_AUTH_BOND);
-  BLESecurity::setCapability(ESP_IO_CAP_NONE);
-  BLESecurity::setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
-  BLESecurity::setRespEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
   drawScreen(true);
 }
 

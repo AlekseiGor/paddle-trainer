@@ -13,7 +13,7 @@
         <header class="topbar">
           <div>
             <h1>Paddle Trainer</h1>
-            <p>Arduino Micro: D2 = dit ([), D3 = dah (]); M5 BLE: dit = a, dah = s</p>
+            <p>Arduino Micro: D2 = dit ([), D3 = dah (])</p>
           </div>
           <button id="focusButton" type="button">Focus input</button>
         </header>
@@ -35,10 +35,6 @@
             <span>Code</span>
             <strong id="codeLabel">-</strong>
           </div>
-          <div class="metric">
-            <span>Raw</span>
-            <strong id="rawInputLabel">-</strong>
-          </div>
         </div>
 
         <section id="targetPanel" class="target-panel" tabindex="0">
@@ -50,7 +46,6 @@
             </div>
           </div>
           <div id="targetText" class="target-text" aria-live="polite"></div>
-          <input id="captureInput" class="capture-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Tap here on phone, then use paddle" aria-label="Paddle input capture" />
         </section>
 
         <section class="settings-grid" aria-label="Trainer settings">
@@ -152,6 +147,7 @@
     </main>
 
     <script src="./sync-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./app.js"></script>
   </body>
 </html>

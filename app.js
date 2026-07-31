@@ -729,8 +729,6 @@ async function runKeyer() {
 function focusPaddleInput() {
   els.captureInput.value = "";
   els.captureInput.focus({ preventScroll: true });
-  els.targetPanel.focus({ preventScroll: true });
-  els.captureInput.focus({ preventScroll: true });
 }
 
 function pressPaddleKey(mark) {
@@ -1105,15 +1103,18 @@ function bindUi() {
   document.addEventListener("keyup", onKeyUp);
   els.captureInput.addEventListener("beforeinput", onCaptureBeforeInput);
   els.captureInput.addEventListener("input", onCaptureInput);
+  els.targetPanel.addEventListener("pointerdown", () => {
+    focusPaddleInput();
+  });
 
   document.getElementById("focusButton").addEventListener("click", async () => {
+    focusPaddleInput();
+    setResult("Input focused", "");
     try {
       await startAudio();
     } catch {
       setResult("Audio unavailable", "error");
     }
-    focusPaddleInput();
-    setResult("Input focused", "");
   });
 
   els.listenGameButton.addEventListener("click", toggleListenGame);

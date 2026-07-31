@@ -11,6 +11,7 @@
 
 #include <M5Unified.h>
 #include "BleKeyboard.h"
+#include <nvs_flash.h>
 
 const int DIT_PIN = 33;
 const int DAH_PIN = 32;
@@ -49,6 +50,17 @@ void setup() {
   M5.begin(cfg);
   M5.Display.setRotation(1);
   M5.Display.fillScreen(TFT_BLACK);
+
+  if (M5.BtnA.isPressed()) {
+    M5.Display.setTextFont(2);
+    M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
+    M5.Display.setCursor(8, 30);
+    M5.Display.print("Clearing BLE bonds...");
+    nvs_flash_erase();
+    nvs_flash_init();
+    delay(900);
+    ESP.restart();
+  }
 
   canvas.setColorDepth(8);
   canvas.createSprite(M5.Display.width(), M5.Display.height());

@@ -37,6 +37,8 @@ The M5StickC Plus2 screen shows:
 3. Tap `Focus input` or the input field in the trainer panel.
 4. Use the paddle.
 
+To clear BLE pairing data stored on the M5StickC Plus2, hold `BtnA` while powering on or resetting the device. The screen will show `Clearing BLE bonds...` and restart.
+
 ## Build
 
 This sketch uses the local `BleKeyboard.h` and `BleKeyboard.cpp` files in the sketch folder. They are a scoped copy of `ESP32_BLE_Keyboard` with iPhone-oriented pairing changes: bonding without MITM and scan response enabled.

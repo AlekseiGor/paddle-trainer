@@ -104,6 +104,15 @@ h1 {
   margin-top: 5px;
 }
 
+.capture-input {
+  position: fixed;
+  left: -1000px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
 .status-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

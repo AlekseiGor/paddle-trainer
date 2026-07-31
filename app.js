@@ -15,6 +15,10 @@ const MORSE = {
 const DECODE = Object.fromEntries(Object.entries(MORSE).map(([k, v]) => [v, k]));
 const SYMBOLS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
 const KOCH_START = "KMRSUAPTLOWI";
+const DIT_INPUT_KEYS = new Set(["[", "{"]);
+const DAH_INPUT_KEYS = new Set(["]", "}"]);
+const DIT_INPUT_CHARS = new Set(["[", "{", "\u0445", "\u0425"]);
+const DAH_INPUT_CHARS = new Set(["]", "}", "\u044a", "\u042A"]);
 
 const state = {
   mode: "single",
@@ -36,6 +40,7 @@ const state = {
   listenAdvanceTimer: 0,
   lastWasDit: false,
   decodeTimer: 0,
+  captureBeforeInputAt: 0,
   audio: null,
   oscillator: null,
   gain: null
@@ -59,6 +64,7 @@ const els = {
   wpmLabel: document.getElementById("wpmLabel"),
   inputLabel: document.getElementById("inputLabel"),
   codeLabel: document.getElementById("codeLabel"),
+  captureInput: document.getElementById("captureInput"),
   resultLabel: document.getElementById("resultLabel"),
   keyStateLabel: document.getElementById("keyStateLabel"),
   logList: document.getElementById("logList"),
@@ -720,36 +726,99 @@ async function runKeyer() {
   render();
 }
 
+function focusPaddleInput() {
+  els.captureInput.value = "";
+  els.captureInput.focus({ preventScroll: true });
+  els.targetPanel.focus({ preventScroll: true });
+  els.captureInput.focus({ preventScroll: true });
+}
+
+function pressPaddleKey(mark) {
+  if (mark === ".") {
+    state.ditDown = true;
+    state.ditMemory = true;
+  } else {
+    state.dahDown = true;
+    state.dahMemory = true;
+  }
+  setResult("Sending", "");
+  runKeyer();
+  render();
+}
+
+function releasePaddleKey(mark) {
+  if (mark === ".") {
+    state.ditDown = false;
+  } else {
+    state.dahDown = false;
+  }
+  render();
+}
+
+function tapPaddleKey(mark) {
+  pressPaddleKey(mark);
+  setTimeout(() => releasePaddleKey(mark), Math.max(30, Math.round(unitMs() * 0.7)));
+}
+
+function paddleMarkFromKeyboardEvent(event) {
+  if (DIT_INPUT_KEYS.has(event.key) || event.code === "BracketLeft") {
+    return ".";
+  }
+  if (DAH_INPUT_KEYS.has(event.key) || event.code === "BracketRight") {
+    return "-";
+  }
+  return "";
+}
+
+function paddleMarkFromInputChar(ch) {
+  if (DIT_INPUT_CHARS.has(ch)) {
+    return ".";
+  }
+  if (DAH_INPUT_CHARS.has(ch)) {
+    return "-";
+  }
+  return "";
+}
+
 function onKeyDown(event) {
   if (event.repeat) {
     return;
   }
-  if (event.key === "[") {
+  const mark = paddleMarkFromKeyboardEvent(event);
+  if (mark) {
     event.preventDefault();
-    state.ditDown = true;
-    state.ditMemory = true;
-    setResult("Sending", "");
-    runKeyer();
-    render();
-  } else if (event.key === "]") {
-    event.preventDefault();
-    state.dahDown = true;
-    state.dahMemory = true;
-    setResult("Sending", "");
-    runKeyer();
-    render();
+    pressPaddleKey(mark);
   }
 }
 
 function onKeyUp(event) {
-  if (event.key === "[") {
+  const mark = paddleMarkFromKeyboardEvent(event);
+  if (mark) {
     event.preventDefault();
-    state.ditDown = false;
-    render();
-  } else if (event.key === "]") {
+    releasePaddleKey(mark);
+  }
+}
+
+function onCaptureBeforeInput(event) {
+  const mark = paddleMarkFromInputChar(event.data);
+  if (mark) {
     event.preventDefault();
-    state.dahDown = false;
-    render();
+    state.captureBeforeInputAt = performance.now();
+    tapPaddleKey(mark);
+  }
+}
+
+function onCaptureInput() {
+  const value = els.captureInput.value;
+  els.captureInput.value = "";
+  if (value.length === 1 && paddleMarkFromInputChar(value) && performance.now() - state.captureBeforeInputAt < 80) {
+    return;
+  }
+  for (const ch of value) {
+    const mark = paddleMarkFromInputChar(ch);
+    if (mark) {
+      tapPaddleKey(mark);
+    }
   }
 }
 
@@ -1034,6 +1103,8 @@ function sleep(ms) {
 function bindUi() {
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
+  els.captureInput.addEventListener("beforeinput", onCaptureBeforeInput);
+  els.captureInput.addEventListener("input", onCaptureInput);
 
   document.getElementById("focusButton").addEventListener("click", async () => {
     try {
@@ -1041,7 +1112,8 @@ function bindUi() {
     } catch {
       setResult("Audio unavailable", "error");
     }
-    els.targetPanel.focus();
+    focusPaddleInput();
+    setResult("Input focused", "");
   });
 
   els.listenGameButton.addEventListener("click", toggleListenGame);

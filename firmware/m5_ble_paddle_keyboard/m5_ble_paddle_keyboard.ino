@@ -2,8 +2,8 @@
   M5StickC Plus2 BLE paddle keyboard.
 
   The device appears as a Bluetooth keyboard:
-  - dit paddle sends and holds '['
-  - dah paddle sends and holds ']'
+  - dit paddle sends and holds 'a'
+  - dah paddle sends and holds 's'
 
   Open the trainer on a phone:
   https://alekseigor.github.io/paddle-trainer/
@@ -15,8 +15,8 @@
 const int DIT_PIN = 33;
 const int DAH_PIN = 32;
 
-const char DIT_KEY = '[';
-const char DAH_KEY = ']';
+const char DIT_KEY = 'a';
+const char DAH_KEY = 's';
 
 const char *BLE_NAME = "CW Paddle BLE";
 const char *TRAINER_HOST = "alekseigor.github.io";
@@ -174,5 +174,5 @@ void drawFooter() {
   canvas.setTextFont(1);
   canvas.setTextColor(TFT_WHITE, TFT_NAVY);
   canvas.setCursor(4, 124);
-  canvas.print("Tip=G33  Ring=G32  Sleeve=GND  Focus input");
+  canvas.print("Tip=G33/a  Ring=G32/s  Sleeve=GND");
 }

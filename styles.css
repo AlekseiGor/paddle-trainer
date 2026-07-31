@@ -109,9 +109,13 @@ h1 {
   width: calc(100% - 24px);
   min-height: 34px;
   margin: 0 12px 12px;
-  color: transparent;
+  color: var(--text);
   caret-color: var(--blue);
   background: #101517;
+}
+
+.capture-input::placeholder {
+  color: var(--muted);
 }
 
 .capture-input:focus {

@@ -27,6 +27,11 @@ For phone training over Bluetooth, use the M5StickC Plus2 firmware:
 
 `firmware/m5_ble_paddle_keyboard/m5_ble_paddle_keyboard.ino`
 
+The M5 BLE firmware sends:
+
+- dit as held `a`
+- dah as held `s`
+
 ## Trainer
 
 Open:

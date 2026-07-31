@@ -17,8 +17,8 @@ const SYMBOLS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
 const KOCH_START = "KMRSUAPTLOWI";
 const DIT_INPUT_KEYS = new Set(["[", "{"]);
 const DAH_INPUT_KEYS = new Set(["]", "}"]);
-const DIT_INPUT_CHARS = new Set(["[", "{", "\u0445", "\u0425"]);
-const DAH_INPUT_CHARS = new Set(["]", "}", "\u044a", "\u042A"]);
+const DIT_INPUT_CHARS = new Set(["[", "{", "a", "A", "\u0445", "\u0425"]);
+const DAH_INPUT_CHARS = new Set(["]", "}", "s", "S", "\u044a", "\u042A"]);
 
 const state = {
   mode: "single",
@@ -759,10 +759,11 @@ function tapPaddleKey(mark) {
 }
 
 function paddleMarkFromKeyboardEvent(event) {
-  if (DIT_INPUT_KEYS.has(event.key) || event.code === "BracketLeft") {
+  const captureActive = document.activeElement === els.captureInput || els.targetPanel.contains(document.activeElement);
+  if (DIT_INPUT_KEYS.has(event.key) || event.code === "BracketLeft" || (captureActive && (event.key === "a" || event.key === "A" || event.code === "KeyA"))) {
     return ".";
   }
-  if (DAH_INPUT_KEYS.has(event.key) || event.code === "BracketRight") {
+  if (DAH_INPUT_KEYS.has(event.key) || event.code === "BracketRight" || (captureActive && (event.key === "s" || event.key === "S" || event.code === "KeyS"))) {
     return "-";
   }
   return "";

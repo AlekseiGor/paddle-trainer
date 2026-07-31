@@ -8,8 +8,8 @@ The device appears to a phone or computer as a Bluetooth keyboard named:
 
 It sends:
 
-- dit paddle as held `[`
-- dah paddle as held `]`
+- dit paddle as held `a`
+- dah paddle as held `s`
 
 ## Wiring
 
@@ -34,7 +34,7 @@ The M5StickC Plus2 screen shows:
 
 1. Pair the phone with `CW Paddle BLE` in Bluetooth settings.
 2. Open `https://alekseigor.github.io/paddle-trainer/`.
-3. Tap `Focus input`.
+3. Tap `Focus input` or the input field in the trainer panel.
 4. Use the paddle.
 
 ## Build

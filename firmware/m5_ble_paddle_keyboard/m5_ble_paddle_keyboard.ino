@@ -11,6 +11,7 @@
 
 #include <M5Unified.h>
 #include <BleKeyboard.h>
+#include <BLESecurity.h>
 
 const int DIT_PIN = 33;
 const int DAH_PIN = 32;
@@ -18,14 +19,14 @@ const int DAH_PIN = 32;
 const char DIT_KEY = 'a';
 const char DAH_KEY = 's';
 
-const char *BLE_NAME = "CW Paddle BLE";
+const char *BLE_NAME = "CW Paddle KBD";
 const char *TRAINER_HOST = "alekseigor.github.io";
 const char *TRAINER_PATH = "/paddle-trainer/";
 
 const unsigned long DEBOUNCE_MS = 8;
 const unsigned long SCREEN_REFRESH_MS = 250;
 
-BleKeyboard bleKeyboard(BLE_NAME, "PaddleTrainer", 100);
+BleKeyboard bleKeyboard(BLE_NAME, "M5Stack", 100);
 M5Canvas canvas(&M5.Display);
 
 bool ditDown = false;
@@ -54,7 +55,14 @@ void setup() {
   canvas.createSprite(M5.Display.width(), M5.Display.height());
   canvas.setTextDatum(textdatum_t::top_left);
 
+  bleKeyboard.set_vendor_id(0x303A);
+  bleKeyboard.set_product_id(0x4001);
+  bleKeyboard.set_version(0x0100);
   bleKeyboard.begin();
+  BLESecurity::setAuthenticationMode(ESP_LE_AUTH_BOND);
+  BLESecurity::setCapability(ESP_IO_CAP_NONE);
+  BLESecurity::setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
+  BLESecurity::setRespEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
   drawScreen(true);
 }
 

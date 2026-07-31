@@ -4,7 +4,7 @@ Bluetooth HID paddle interface for M5StickC Plus2.
 
 The device appears to a phone or computer as a Bluetooth keyboard named:
 
-`CW Paddle BLE`
+`CW Paddle KBD`
 
 It sends:
 
@@ -32,7 +32,7 @@ The M5StickC Plus2 screen shows:
 
 ## Phone Use
 
-1. Pair the phone with `CW Paddle BLE` in Bluetooth settings.
+1. Pair the phone with `CW Paddle KBD` in Bluetooth settings.
 2. Open `https://alekseigor.github.io/paddle-trainer/`.
 3. Tap `Focus input` or the input field in the trainer panel.
 4. Use the paddle.

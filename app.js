@@ -43,6 +43,7 @@ const state = {
 
 const STORAGE_KEY = "paddleTrainerSettings.v1";
 const LOG_STORAGE_KEY = "paddleTrainerSessionLog.v1";
+const LOCAL_LOG_CACHE_LIMIT = 500;
 const SYNC_CONFIG = window.PADDLE_SYNC_CONFIG || {};
 
 const syncState = {
@@ -817,6 +818,24 @@ function loadSessionLog() {
   }
 }
 
+function safeStorageSet(storage, key, value, fallbackValue = null) {
+  try {
+    storage.setItem(key, value);
+    return true;
+  } catch {
+    if (fallbackValue === null) {
+      return false;
+    }
+  }
+
+  try {
+    storage.setItem(key, fallbackValue);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function currentSettings() {
   return {
     mode: els.modeSelect.value,
@@ -871,12 +890,14 @@ function applySettings() {
 }
 
 function saveSettings() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(currentSettings()));
+  safeStorageSet(localStorage, STORAGE_KEY, JSON.stringify(currentSettings()));
   scheduleCloudSave();
 }
 
 function saveSessionLog() {
-  sessionStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(state.attemptLog));
+  const fullLog = JSON.stringify(state.attemptLog);
+  const cachedLog = JSON.stringify(state.attemptLog.slice(-LOCAL_LOG_CACHE_LIMIT));
+  safeStorageSet(sessionStorage, LOG_STORAGE_KEY, fullLog, cachedLog);
   scheduleCloudSave();
 }
 
@@ -890,6 +911,23 @@ function setSyncStatus(text, className = "") {
   if (className) {
     els.syncStatus.classList.add(className);
   }
+}
+
+function syncErrorStatus(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  if (message.includes("failed to fetch") || message.includes("network")) {
+    return "Sync network error";
+  }
+  if (message.includes("permission denied") || message.includes("row-level security")) {
+    return "Sync permission error";
+  }
+  if (message.includes("function") || message.includes("pgrst202")) {
+    return "Sync API missing";
+  }
+  if (message.includes("quota") || message.includes("storage")) {
+    return "Local storage full";
+  }
+  return "Sync error";
 }
 
 function getSyncClient() {
@@ -910,13 +948,19 @@ async function sha256Hex(text) {
 
 function applyCloudProfile(profile) {
   syncState.loading = true;
-  applySettingsObject(profile.settings || {});
-  state.attemptLog = Array.isArray(profile.attempt_log) ? profile.attempt_log : [];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(currentSettings()));
-  sessionStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(state.attemptLog));
-  newTarget();
-  syncState.loading = false;
-  render();
+  try {
+    applySettingsObject(profile.settings || {});
+    state.attemptLog = Array.isArray(profile.attempt_log) ? profile.attempt_log : [];
+    safeStorageSet(localStorage, STORAGE_KEY, JSON.stringify(currentSettings()));
+
+    const fullLog = JSON.stringify(state.attemptLog);
+    const cachedLog = JSON.stringify(state.attemptLog.slice(-LOCAL_LOG_CACHE_LIMIT));
+    safeStorageSet(sessionStorage, LOG_STORAGE_KEY, fullLog, cachedLog);
+    newTarget();
+  } finally {
+    syncState.loading = false;
+    render();
+  }
 }
 
 async function connectCloudSync() {
@@ -950,9 +994,11 @@ async function connectCloudSync() {
     } else {
       await saveCloudProfile("Created");
     }
-  } catch {
+  } catch (error) {
+    console.error("Cloud sync failed", error);
     syncState.profileHash = "";
-    setSyncStatus("Sync error", "error");
+    syncState.loading = false;
+    setSyncStatus(syncErrorStatus(error), "error");
   }
 }
 
@@ -973,8 +1019,9 @@ async function saveCloudProfile(statusText = "Saved") {
       throw error;
     }
     setSyncStatus(statusText);
-  } catch {
-    setSyncStatus("Sync error", "error");
+  } catch (error) {
+    console.error("Cloud save failed", error);
+    setSyncStatus(syncErrorStatus(error), "error");
   }
 }
 
